@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đảo Hoang Sinh Tồn</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
+        #game-ui { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        #game-ui * { pointer-events: auto; }
+
+        /* Chỉ số cá nhân */
+        .player-stats { position: absolute; top: 15px; left: 15px; }
+        .bar-bg { width: 140px; height: 14px; background: #222; border: 2px solid #fff; border-radius: 7px; margin-bottom: 5px; overflow: hidden; }
+        #hp-fill { width: 100%; height: 100%; background: #ff4d4d; transition: 0.3s; }
+        #food-fill { width: 80%; height: 100%; background: #ffa500; transition: 0.3s; }
+
+        /* Joystick bên trái */
+        #joystick-container {
+            position: absolute; bottom: 40px; left: 40px;
+            width: 120px; height: 120px; background: rgba(255,255,255,0.1);
+            border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);
+        }
+        #joystick-knob {
+            position: absolute; top: 50%; left: 50%;
+            width: 50px; height: 50px; background: rgba(255,255,255,0.5);
+            border-radius: 50%; transform: translate(-50%, -50%);
+        }
+
+        /* Hotbar & Action */
+        .hotbar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; background: rgba(0,0,0,0.5); padding: 6px; border-radius: 12px; }
+        .slot { width: 48px; height: 48px; background: #444; border: 3px solid #777; border-radius: 8px; position: relative; }
+        .slot.active { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; }
+        .menu-btn { width: 48px; height: 48px; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 2px solid #fff; }
+        
+        .action-btn { 
+            position: absolute; bottom: 40px; right: 40px; width: 85px; height: 85px;
+            background: rgba(255,100,0,0.3); border: 4px solid #fff; border-radius: 50%;
+            color: white; font-weight: bold; text-align: center; line-height: 85px;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-ui">
+    <div class="player-stats">
+        <div class="bar-bg"><div id="hp-fill"></div></div>
+        <div class="bar-bg"><div id="food-fill"></div></div>
+    </div>
+
+    <div id="joystick-container">
+        <div id="joystick-knob"></div>
+    </div>
+
+    <div class="hotbar">
+        <div class="slot active" onclick="selectSlot(0)"></div>
+        <div class="slot" onclick="selectSlot(1)"></div>
+        <div class="slot" onclick="selectSlot(2)"></div>
+        <div class="slot" onclick="selectSlot(3)"></div>
+        <div class="menu-btn" onclick="openFullInv()">...</div>
+    </div>
+
+    <div class="action-btn" onclick="doAction()">HÀNH ĐỘNG</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // --- Biến Logic ---
+    let player = { x: canvas.width/2, y: canvas.height/2, speed: 3.5, size: 15 };
+    let campfire = { x: canvas.width/2, y: canvas.height/2, hp: 100, level: 1 };
+    let moveDir = { x: 0, y: 0 };
+    
+    // --- Xử lý Joystick ---
+    const jContainer = document.getElementById('joystick-container');
+    const jKnob = document.getElementById('joystick-knob');
+    let jActive = false;
+
+    jContainer.addEventListener('touchstart', e => jActive = true);
+    window.addEventListener('touchmove', e => {
+        if (!jActive) return;
+        const touch = e.touches[0];
+        const rect = jContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width/2;
+        const centerY = rect.top + rect.height/2;
+        
+        let dx = touch.clientX - centerX;
+        let dy = touch.clientY - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const maxDist = rect.width/2;
+
+        if (dist > maxDist) {
+            dx *= maxDist / dist;
+            dy *= maxDist / dist;
+        }
+
+        jKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        moveDir.x = dx / maxDist;
+        moveDir.y = dy / maxDist;
+    });
+
+    window.addEventListener('touchend', () => {
+        jActive = false;
+        jKnob.style.transform = `translate(-50%, -50%)`;
+        moveDir = { x: 0, y: 0 };
+    });
+
+    // --- Vòng lặp Game ---
+    function update() {
+        player.x += moveDir.x * player.speed;
+        player.y += moveDir.y * player.speed;
+        
+        // Giới hạn trong màn hình
+        player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+        player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+    }
+
+    function draw() {
+        // Vẽ nền cỏ
+        ctx.fillStyle = "#2d5a27";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ Lửa trại (Cố định ở giữa)
+        ctx.fillStyle = "#e67e22";
+        ctx.beginPath();
+        ctx.arc(campfire.x, campfire.y, 25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#f1c40f"; // Ngọn lửa nhỏ bên trong
+        ctx.beginPath();
+        ctx.arc(campfire.x, campfire.y, 12, 0, Math.PI*2);
+        ctx.fill();
+
+        // Vẽ Nhân vật (Màu trắng cho dễ nhìn)
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.size, 0, Math.PI*2);
+        ctx.fill();
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    // Các hàm UI
+    function selectSlot(i) {
+        document.querySelectorAll('.slot').forEach((s, idx) => {
+            s.classList.toggle('active', i === idx);
+        });
+    }
+
+    function doAction() {
+        console.log("Hành động tại vị trí:", player.x, player.y);
+    }
+
+    function openFullInv() {
+        alert("Sắp có: Túi đồ Minecraft style & Tách đồ!");
+    }
+
+    draw();
+</script>
+</body>
+</html>
