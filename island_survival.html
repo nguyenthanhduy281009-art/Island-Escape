@@ -1,116 +1,88 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Đảo Hoang Sinh Tồn</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #1a472a; font-family: sans-serif; touch-action: none; }
-        canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        #ui-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        #ui-layer * { pointer-events: auto; }
-
-        /* Chỉ số */
-        .stats { position: absolute; top: 15px; left: 15px; }
-        .bar { width: 140px; height: 12px; background: #222; border: 2px solid #fff; border-radius: 6px; margin-bottom: 5px; overflow: hidden; }
-        #hp { width: 100%; height: 100%; background: #ff4d4d; }
-        #food { width: 80%; height: 100%; background: #ffa500; }
-
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a472a; }
+        canvas { display: block; background: #2d5a27; }
+        /* UI Layer */
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        #ui * { pointer-events: auto; }
         /* Joystick */
-        #joy-bg { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; border: 2px solid #fff; }
-        #joy-thumb { position: absolute; top: 25px; left: 25px; width: 50px; height: 50px; background: #fff; border-radius: 50%; opacity: 0.8; }
-
-        /* Hotbar 8 ô */
-        .hotbar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.6); padding: 4px; border-radius: 8px; }
-        .slot { width: 40px; height: 40px; background: #444; border: 2px solid #888; border-radius: 4px; }
-        .slot.active { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
-        .dots { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; background: #333; border-radius: 4px; border: 2px solid #fff; }
-
-        /* Nút Đấm */
-        .action { position: absolute; bottom: 45px; right: 45px; width: 80px; height: 80px; background: rgba(255,255,255,0.2); border: 4px solid #fff; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; -webkit-user-select: none; }
+        #joy-bg { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border: 2px solid #fff; border-radius: 50%; }
+        #joy-stick { position: absolute; top: 25px; left: 25px; width: 50px; height: 50px; background: #fff; border-radius: 50%; }
+        /* Hotbar */
+        .hotbar { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 8px; }
+        .slot { width: 35px; height: 35px; background: #444; border: 2px solid #888; border-radius: 4px; }
+        .active { border-color: #f1c40f; }
     </style>
 </head>
 <body>
 
-<div id="ui-layer">
-    <div class="stats">
-        <div class="bar"><div id="hp"></div></div>
-        <div class="bar"><div id="food"></div></div>
-    </div>
-    <div id="joy-bg"><div id="joy-thumb"></div></div>
+<div id="ui">
+    <div id="joy-bg"><div id="joy-stick"></div></div>
     <div class="hotbar">
-        <div class="slot active" onclick="sel(0)"></div>
-        <div class="slot" onclick="sel(1)"></div>
-        <div class="slot" onclick="sel(2)"></div>
-        <div class="slot" onclick="sel(3)"></div>
-        <div class="slot" onclick="sel(4)"></div>
-        <div class="slot" onclick="sel(5)"></div>
-        <div class="slot" onclick="sel(6)"></div>
-        <div class="dots" onclick="alert('Mở rương')">...</div>
+        <div class="slot active"></div><div class="slot"></div><div class="slot"></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        <div style="color:white; font-weight:bold; padding: 5px;">...</div>
     </div>
-    <div class="action" id="actionBtn">HÀNH ĐỘNG</div>
 </div>
 
-<canvas id="canvas"></canvas>
+<canvas id="g"></canvas>
 
 <script>
-    const cvs = document.getElementById('canvas');
-    const ctx = cvs.getContext('2d');
-    cvs.width = window.innerWidth;
-    cvs.height = window.innerHeight;
+    const canvas = document.getElementById('g');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    let p = { x: cvs.width/2, y: cvs.height/2, v: 3 };
-    let joy = { x: 0, y: 0, active: false };
+    let p = { x: canvas.width/2, y: canvas.height/2, v: 3 };
+    let j = { x: 0, y: 0, active: false };
 
-    // Joystick Logic
+    // Joystick Event
     const bg = document.getElementById('joy-bg');
-    const thumb = document.getElementById('joy-thumb');
-    
-    bg.addEventListener('touchstart', e => { joy.active = true; moveJoy(e); }, {passive: false});
-    window.addEventListener('touchmove', e => { if(joy.active) { e.preventDefault(); moveJoy(e); } }, {passive: false});
-    window.addEventListener('touchend', () => { 
-        joy.active = false; 
-        joy.x = 0; joy.y = 0;
-        thumb.style.left = '25px'; thumb.style.top = '25px';
-    });
+    const st = document.getElementById('joy-stick');
 
-    function moveJoy(e) {
-        let t = e.touches[0];
-        let r = bg.getBoundingClientRect();
-        let cx = r.left + 50, cy = r.top + 50;
-        let dx = t.clientX - cx, dy = t.clientY - cy;
-        let d = Math.sqrt(dx*dx + dy*dy);
-        if(d > 50) { dx *= 50/d; dy *= 50/d; d = 50; }
-        thumb.style.left = (25 + dx) + 'px';
-        thumb.style.top = (25 + dy) + 'px';
-        joy.x = dx/50; joy.y = dy/50;
+    function handleInput(e) {
+        if(!j.active) return;
+        const t = e.touches ? e.touches[0] : e;
+        const r = bg.getBoundingClientRect();
+        const dx = t.clientX - (r.left + 50);
+        const dy = t.clientY - (r.top + 50);
+        const d = Math.min(Math.sqrt(dx*dx + dy*dy), 50);
+        const ang = Math.atan2(dy, dx);
+        
+        const lx = Math.cos(ang) * d;
+        const ly = Math.sin(ang) * d;
+        
+        st.style.transform = `translate(${lx}px, ${ly}px)`;
+        j.x = lx / 50; j.y = ly / 50;
     }
 
-    function sel(i) {
-        document.querySelectorAll('.slot').forEach((s, idx) => s.classList.toggle('active', i === idx));
-    }
+    bg.addEventListener('touchstart', (e) => { j.active = true; handleInput(e); });
+    window.addEventListener('touchmove', (e) => { if(j.active) { e.preventDefault(); handleInput(e); } }, {passive: false});
+    window.addEventListener('touchend', () => { j.active = false; st.style.transform = ''; j.x = 0; j.y = 0; });
 
-    function loop() {
-        // Cập nhật vị trí
-        p.x += joy.x * p.v;
-        p.y += joy.y * p.v;
-
-        // Vẽ
-        ctx.fillStyle = "#1a472a"; // Nền đảo
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
+    // Game Loop
+    function draw() {
+        ctx.fillStyle = '#1a472a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Lửa trại
-        ctx.fillStyle = "orange";
-        ctx.beginPath(); ctx.arc(cvs.width/2, cvs.height/2, 20, 0, 7); ctx.fill();
+        ctx.fillStyle = 'orange';
+        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 20, 0, 7); ctx.fill();
 
-        // Nhân vật
-        ctx.fillStyle = "white";
+        // Nhân vật di chuyển
+        p.x += j.x * p.v; p.y += j.y * p.v;
+        ctx.fillStyle = 'white';
         ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, 7); ctx.fill();
 
-        requestAnimationFrame(loop);
+        requestAnimationFrame(draw);
     }
-    loop();
+    draw();
+
+    window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
 </script>
 </body>
-</html>
+</html>    
