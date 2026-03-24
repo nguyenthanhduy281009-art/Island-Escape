@@ -3,174 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Island Survival - Pro Version</title>
+    <title>Survival Island - Day/Night Cycle</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a472a; touch-action: none; font-family: 'Arial', sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a472a; touch-action: none; font-family: Arial; user-select: none; }
         canvas { display: block; }
         #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         #ui * { pointer-events: auto; }
+        
+        /* Stats & Day/Night */
+        .header { position: absolute; top: 15px; left: 15px; color: white; text-shadow: 2px 2px #000; }
+        #time-label { font-size: 18px; font-weight: bold; }
+        .stats { position: absolute; top: 15px; right: 15px; }
+        .bar { width: 140px; height: 14px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 7px; margin-bottom: 5px; overflow: hidden; }
+        #hp-bar { width: 100%; height: 100%; background: #ff4d4d; }
+        #food-bar { width: 100%; height: 100%; background: #ffa500; }
 
-        /* Chỉ số - Góc phải trên */
-        .stats { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; }
-        .bar { width: 160px; height: 16px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 10px; overflow: hidden; position: relative; }
-        #hp-bar { width: 100%; height: 100%; background: #ff4d4d; transition: 0.3s; }
-        #food-bar { width: 80%; height: 100%; background: #ffa500; transition: 0.3s; }
-        .bar-icon { position: absolute; left: 5px; top: -2px; font-size: 12px; color: white; font-weight: bold; z-index: 2; }
+        /* Joystick */
+        #joy-bg { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; border: 2px solid #fff; }
+        #joy-stick { position: absolute; top: 25px; left: 25px; width: 50px; height: 50px; background: #fff; border-radius: 50%; }
 
-        /* Day Label - Góc trái trên */
-        #day-tag { position: absolute; top: 20px; left: 20px; color: #000; font-size: 24px; font-weight: bold; text-shadow: 1px 1px white; }
+        /* Hotbar */
+        .hotbar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(255,255,255,0.3); padding: 5px; border-radius: 5px; border: 1px solid #fff; }
+        .slot { width: 40px; height: 40px; background: #fff; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+        .slot.active { outline: 3px solid #f1c40f; }
 
-        /* Joystick - Góc trái dưới */
-        #joy-bg { position: absolute; bottom: 50px; left: 50px; width: 110px; height: 110px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; }
-        #joy-stick { position: absolute; top: 30px; left: 30px; width: 50px; height: 50px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-
-        /* Hotbar 8 ô - Giống ảnh Duy gửi */
-        .hotbar { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; background: rgba(255,255,255,0.3); padding: 6px; border-radius: 4px; border: 1px solid #fff; }
-        .slot { width: 42px; height: 42px; background: #fff; border: 1px solid #000; display: flex; align-items: center; justify-content: center; position: relative; }
-        .slot.active { outline: 3px solid #f1c40f; z-index: 5; }
-        .dots { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: black; font-size: 20px; }
-
-        /* Nút Hành Động - Giống ảnh (Có icon) */
-        #action-btn { 
-            position: absolute; bottom: 40px; right: 40px; width: 90px; height: 90px;
-            background: rgba(255,255,255,0.2); border: 5px solid #fff; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-        }
-        #action-btn img { width: 50px; opacity: 0.9; }
+        /* Nút Hành Động */
+        #action-btn { position: absolute; bottom: 40px; right: 40px; width: 85px; height: 85px; background: rgba(255,255,255,0.2); border: 4px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; text-align: center; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <div id="day-tag">DAY 0</div>
+    <div class="header">
+        <div id="day-label">NGÀY 1</div>
+        <div id="time-label">SÁNG - 02:00</div>
+    </div>
     <div class="stats">
-        <div class="bar"><span class="bar-icon">❤</span><div id="hp-bar"></div></div>
-        <div class="bar"><span class="bar-icon">🍖</span><div id="food-bar"></div></div>
+        <div class="bar"><div id="hp-bar"></div></div>
+        <div class="bar"><div id="food-bar"></div></div>
     </div>
-    
     <div id="joy-bg"><div id="joy-stick"></div></div>
-
-    <div class="hotbar">
-        <div class="slot active" onclick="sel(0)"></div>
-        <div class="slot" onclick="sel(1)"></div>
-        <div class="slot" onclick="sel(2)"></div>
-        <div class="slot" onclick="sel(3)"></div>
-        <div class="slot" onclick="sel(4)"></div>
-        <div class="slot" onclick="sel(5)"></div>
-        <div class="slot" onclick="sel(6)"></div>
-        <div class="slot" onclick="sel(7)"></div>
-        <div class="dots" onclick="alert('Mở rương')">...</div>
-    </div>
-
-    <div id="action-btn" onclick="doAction()">
-        <img src="https://cdn-icons-png.flaticon.com/512/1004/1004696.png" alt="Punch">
-    </div>
+    <div class="hotbar" id="hotbar"></div>
+    <div id="action-btn" onclick="handleAction()">HÀNH ĐỘNG</div>
 </div>
 
 <canvas id="game"></canvas>
 
 <script>
-    const cvs = document.getElementById('game');
-    const ctx = cvs.getContext('2d');
-    cvs.width = window.innerWidth;
-    cvs.height = window.innerHeight;
+    const cvs = document.getElementById('game'), ctx = cvs.getContext('2d');
+    cvs.width = window.innerWidth; cvs.height = window.innerHeight;
 
-    // --- Biến Hệ Thống ---
-    let player = { 
-        x: 0, y: 0, // Vị trí trong thế giới (World)
-        angle: 0, // Hướng xoay
-        speed: 4,
-        size: 22
-    };
+    // --- Biến Game ---
+    let world = { wood: [] };
+    let player = { x: 0, y: 0, angle: 0, speed: 4, inventory: Array(8).fill(null), activeSlot: 0 };
+    let campfire = { x: 0, y: 0, level: 1, woodNeeded: 3, woodInside: 0, radius: 150 };
     let joy = { x: 0, y: 0, active: false };
-    let camera = { x: 0, y: 0 };
+    let cycle = { phase: 'Ngày', timeLeft: 120, day: 1 }; // 120s = 2p
 
-    // --- Joystick Cảm ứng & Chuột ---
-    const jBg = document.getElementById('joy-bg');
-    const jSt = document.getElementById('joy-stick');
+    // Khởi tạo củi ngẫu nhiên
+    for(let i=0; i<20; i++) spawnWood();
 
-    function handleInput(clientX, clientY) {
-        if(!joy.active) return;
-        const r = jBg.getBoundingClientRect();
-        const cx = r.left + 55, cy = r.top + 55;
-        let dx = clientX - cx, dy = clientY - cy;
-        const d = Math.min(Math.sqrt(dx*dx + dy*dy), 55);
-        const ang = Math.atan2(dy, dx);
-        
-        jSt.style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
-        joy.x = Math.cos(ang) * (d/55);
-        joy.y = Math.sin(ang) * (d/55);
-        player.angle = ang; // Cập nhật hướng xoay nhân vật
+    function spawnWood() {
+        world.wood.push({ x: (Math.random()-0.5)*2000, y: (Math.random()-0.5)*2000 });
     }
 
+    // --- Chu kỳ Ngày Đêm ---
+    setInterval(() => {
+        cycle.timeLeft--;
+        if(cycle.timeLeft <= 0) {
+            cycle.phase = cycle.phase === 'Ngày' ? 'Đêm' : 'Ngày';
+            cycle.timeLeft = 120;
+            if(cycle.phase === 'Ngày') cycle.day++;
+        }
+        document.getElementById('day-label').innerText = `NGÀY ${cycle.day}`;
+        let m = Math.floor(cycle.timeLeft/60), s = cycle.timeLeft%60;
+        document.getElementById('time-label').innerText = `${cycle.phase.toUpperCase()} - ${m}:${s<10?'0':''}${s}`;
+    }, 1000);
+
+    // --- Điều khiển (Joy/Mouse/Touch) ---
+    const jBg = document.getElementById('joy-bg'), jSt = document.getElementById('joy-stick');
+    function input(clientX, clientY) {
+        if(!joy.active) return;
+        let r = jBg.getBoundingClientRect(), cx = r.left+50, cy = r.top+50;
+        let dx = clientX-cx, dy = clientY-cy, d = Math.min(Math.sqrt(dx*dx+dy*dy), 50), ang = Math.atan2(dy, dx);
+        jSt.style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
+        joy.x = Math.cos(ang)*(d/50); joy.y = Math.sin(ang)*(d/50); player.angle = ang;
+    }
     jBg.addEventListener('mousedown', () => joy.active = true);
-    jBg.addEventListener('touchstart', (e) => { joy.active = true; handleInput(e.touches[0].clientX, e.touches[0].clientY); });
-    window.addEventListener('mousemove', e => handleInput(e.clientX, e.clientY));
-    window.addEventListener('touchmove', e => { if(joy.active) { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); } }, {passive: false});
-    window.addEventListener('mouseup', () => { joy.active = false; jSt.style.transform = ''; joy.x = 0; joy.y = 0; });
-    window.addEventListener('touchend', () => { joy.active = false; jSt.style.transform = ''; joy.x = 0; joy.y = 0; });
+    jBg.addEventListener('touchstart', e => { joy.active = true; input(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('mousemove', e => input(e.clientX, e.clientY));
+    window.addEventListener('touchmove', e => { if(joy.active) input(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('mouseup', () => { joy.active=false; jSt.style.transform=''; joy.x=0; joy.y=0; });
+    window.addEventListener('touchend', () => { joy.active=false; jSt.style.transform=''; joy.x=0; joy.y=0; });
 
-    // --- Vòng lặp chính ---
+    // --- Xử lý Hành Động ---
+    function handleAction() {
+        // 1. Nhặt Củi
+        let woodIndex = world.wood.findIndex(w => Math.hypot(w.x - player.x, w.y - player.y) < 50);
+        if(woodIndex !== -1) {
+            for(let i=0; i<8; i++) {
+                if(!player.inventory[i]) {
+                    player.inventory[i] = { type: 'WOOD', count: 1 };
+                    world.wood.splice(woodIndex, 1);
+                    renderHotbar(); return;
+                }
+            }
+        }
+        // 2. Tiếp Củi cho Lửa
+        let distToFire = Math.hypot(campfire.x - player.x, campfire.y - player.y);
+        let currentItem = player.inventory[player.activeSlot];
+        if(distToFire < 70 && currentItem && currentItem.type === 'WOOD') {
+            campfire.woodInside++;
+            player.inventory[player.activeSlot] = null;
+            if(campfire.woodInside >= campfire.woodNeeded) {
+                campfire.level++;
+                campfire.woodInside = 0;
+                campfire.radius += 50; // Tăng độ sáng
+                campfire.woodNeeded += 2;
+                alert("Lửa trại đã lên Cấp " + campfire.level);
+            }
+            renderHotbar();
+        }
+    }
+
+    // --- Vẽ Game ---
     function loop() {
-        // 1. Update Vị trí & Camera
-        player.x += joy.x * player.speed;
-        player.y += joy.y * player.speed;
-        camera.x = player.x - cvs.width/2;
-        camera.y = player.y - cvs.height/2;
+        player.x += joy.x * player.speed; player.y += joy.y * player.speed;
+        let camX = player.x - cvs.width/2, camY = player.y - cvs.height/2;
 
-        // 2. Vẽ Nền (Map rộng lớn)
-        ctx.fillStyle = "#2d5a27"; // Màu cỏ
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        // Vẽ Cỏ
+        ctx.fillStyle = "#2d5a27"; ctx.fillRect(0,0,cvs.width,cvs.height);
+
+        // Vẽ Củi rơi trên đất
+        ctx.fillStyle = "#5d4037";
+        world.wood.forEach(w => {
+            ctx.fillRect(w.x - camX, w.y - camY, 20, 8);
+        });
+
+        // Vẽ Lửa Trại
+        let fx = campfire.x - camX, fy = campfire.y - camY;
+        ctx.fillStyle = "orange"; ctx.beginPath(); ctx.arc(fx, fy, 25, 0, 7); ctx.fill();
         
-        // Vẽ lưới ô vuông để thấy map đang di chuyển
-        ctx.strokeStyle = "rgba(0,0,0,0.1)";
-        ctx.lineWidth = 1;
-        for(let i = -camera.x % 100; i < cvs.width; i += 100) {
-            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, cvs.height); ctx.stroke();
+        // Vẽ Hiệu ứng Tối (Ban đêm)
+        if(cycle.phase === 'Đêm' || cycle.timeLeft < 10) {
+            let opacity = cycle.phase === 'Đêm' ? 0.7 : 0.3;
+            ctx.fillStyle = `rgba(0,0,0,${opacity})`;
+            ctx.fillRect(0,0,cvs.width,cvs.height);
+            
+            // Đục lỗ ánh sáng (Lửa & Người)
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath(); ctx.arc(fx, fy, campfire.radius, 0, 7); ctx.fill(); // Ánh sáng lửa
+            ctx.beginPath(); ctx.arc(cvs.width/2, cvs.height/2, 60, 0, 7); ctx.fill(); // Ánh sáng quanh người
+            ctx.globalCompositeOperation = 'source-over';
         }
-        for(let i = -camera.y % 100; i < cvs.height; i += 100) {
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(cvs.width, i); ctx.stroke();
-        }
 
-        // 3. Vẽ Lửa trại (Cố định ở tọa độ 0,0 của thế giới)
-        let campScreenX = 0 - camera.x;
-        let campScreenY = 0 - camera.y;
-        ctx.fillStyle = "rgba(255, 255, 0, 0.2)"; // Quầng sáng
-        ctx.beginPath(); ctx.arc(campScreenX, campScreenY, 150, 0, 7); ctx.fill();
-        ctx.fillStyle = "orange"; // Đống lửa
-        ctx.beginPath(); ctx.arc(campScreenX, campScreenY, 25, 0, 7); ctx.fill();
-
-        // 4. Vẽ Nhân vật (Ở giữa màn hình vì camera đi theo)
-        let px = player.x - camera.x;
-        let py = player.y - camera.y;
-
+        // Vẽ Nhân vật (Xoay tay theo Duy yêu cầu)
         ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(player.angle); // Xoay theo hướng di chuyển
-
-        // Thân nhân vật (Màu vàng như ảnh Duy gửi)
-        ctx.fillStyle = "#f1c40f";
-        ctx.beginPath(); ctx.arc(0, 0, player.size, 0, 7); ctx.fill();
-        ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.stroke();
-
-        // 2 cái tay (Hướng nhân vật)
-        ctx.fillStyle = "#f1c40f";
-        ctx.beginPath(); ctx.arc(18, -12, 8, 0, 7); ctx.fill(); // Tay trái
-        ctx.stroke();
-        ctx.beginPath(); ctx.arc(18, 12, 8, 0, 7); ctx.fill();  // Tay phải
-        ctx.stroke();
-
+        ctx.translate(cvs.width/2, cvs.height/2);
+        ctx.rotate(player.angle);
+        ctx.fillStyle = "#f1c40f"; ctx.beginPath(); ctx.arc(0,0,20,0,7); ctx.fill(); // Thân
+        ctx.fillStyle = "#f1c40f"; 
+        ctx.beginPath(); ctx.arc(18,-12,8,0,7); ctx.fill(); // Tay trái
+        ctx.beginPath(); ctx.arc(18,12,8,0,7); ctx.fill();  // Tay phải
         ctx.restore();
 
         requestAnimationFrame(loop);
     }
 
-    function sel(i) {
-        document.querySelectorAll('.slot').forEach((s, idx) => s.classList.toggle('active', i === idx));
+    function renderHotbar() {
+        let html = '';
+        player.inventory.forEach((item, i) => {
+            html += `<div class="slot ${player.activeSlot==i?'active':''}" onclick="player.activeSlot=${i}; renderHotbar()">
+                ${item ? 'CỦI' : ''}
+            </div>`;
+        });
+        document.getElementById('hotbar').innerHTML = html + '<div class="dots">...</div>';
     }
 
-    loop();
-    window.onresize = () => { cvs.width = window.innerWidth; cvs.height = window.innerHeight; };
+    renderHotbar(); loop();
 </script>
 </body>
 </html>
