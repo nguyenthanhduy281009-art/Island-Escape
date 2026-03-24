@@ -2,79 +2,164 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Island Escape - Sinh Tồn</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đảo Hoang Sinh Tồn</title>
     <style>
-        body { margin: 0; background: #2d5a27; overflow: hidden; touch-action: none; font-family: Arial; }
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        #ui * { pointer-events: auto; }
-        
-        /* Chỉ số góc phải trên */
-        .stats { position: absolute; top: 10px; right: 10px; }
-        .bar { width: 150px; height: 15px; background: #333; border: 2px solid #fff; border-radius: 8px; margin-bottom: 5px; overflow: hidden; }
-        #hp { width: 100%; height: 100%; background: #ff4d4d; }
-        #food { width: 100%; height: 100%; background: #ffa500; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #2d5a27; font-family: sans-serif; touch-action: none; }
+        #game-ui { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        #game-ui * { pointer-events: auto; }
 
-        /* Joystick & Nút hành động (Ảnh 2) */
-        #joy { position: absolute; bottom: 30px; left: 30px; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; border: 2px solid #fff; }
-        #stick { position: absolute; top: 25px; left: 25px; width: 50px; height: 50px; background: #bbb; border-radius: 50%; }
-        .action { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        /* 1. Ngày & Chỉ số (Góc trái trên) */
+        .header { position: absolute; top: 15px; left: 15px; }
+        #day-label { color: #000; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+        .bar-container { position: absolute; top: 15px; right: 15px; }
+        .stat-bar { width: 140px; height: 12px; background: #333; border: 2px solid #fff; border-radius: 6px; margin-bottom: 4px; overflow: hidden; display: flex; align-items: center; }
+        .stat-bar img { width: 14px; margin: 0 4px; }
+        #hp-fill { width: 100%; height: 100%; background: #ff4d4d; transition: 0.3s; }
+        #food-fill { width: 80%; height: 100%; background: #ffa500; transition: 0.3s; }
 
-        /* Hotbar 8 ô + Dấu 3 chấm (Ảnh 2) */
-        .hotbar { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 5px; }
-        .slot { width: 40px; height: 40px; border: 1px solid #333; background: #fff; }
-        .dots { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; color: #000; }
+        /* 2. Joystick (Góc trái dưới) */
+        #joystick-outer {
+            position: absolute; bottom: 30px; left: 30px;
+            width: 100px; height: 100px; background: rgba(255,255,255,0.2);
+            border-radius: 50%; border: 2px solid #fff;
+        }
+        #joystick-knob {
+            position: absolute; top: 25px; left: 25px;
+            width: 50px; height: 50px; background: rgba(255,255,255,0.6);
+            border-radius: 50%; transition: transform 0.1s;
+        }
+
+        /* 3. Hotbar & Action (Góc phải dưới) */
+        .bottom-ui { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 8px; }
+        .slot { width: 40px; height: 40px; background: #555; border: 2px solid #888; border-radius: 4px; }
+        .slot.active { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+        .menu-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
+
+        #action-btn { 
+            position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px;
+            background: rgba(255,100,0,0.3); border: 4px solid #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+            -webkit-user-select: none;
+        }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <div class="stats">
-            <div class="bar"><div id="hp"></div></div>
-            <div class="bar"><div id="food"></div></div>
-        </div>
-        <div id="joy"><div id="stick"></div></div>
-        <div class="hotbar">
-            <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
-            <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
-            <div class="dots">...</div>
-        </div>
-        <div class="action"><img src="https://cdn-icons-png.flaticon.com/512/1004/1004696.png" width="50"></div>
+
+<div id="game-ui">
+    <div class="header">
+        <div id="day-label">DAY 0</div>
     </div>
-    <canvas id="game"></canvas>
+    <div class="bar-container">
+        <div class="stat-bar"><div id="hp-fill"></div></div>
+        <div class="stat-bar"><div id="food-fill"></div></div>
+    </div>
 
-    <script>
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    <div id="joystick-outer">
+        <div id="joystick-knob"></div>
+    </div>
 
-        let p = { x: canvas.width/2, y: canvas.height/2, vx: 0, vy: 0 };
-        const joy = document.getElementById('joy'), st = document.getElementById('stick');
+    <div class="bottom-ui">
+        <div class="slot active" onclick="selectSlot(0)"></div>
+        <div class="slot" onclick="selectSlot(1)"></div>
+        <div class="slot" onclick="selectSlot(2)"></div>
+        <div class="slot" onclick="selectSlot(3)"></div>
+        <div class="slot" onclick="selectSlot(4)"></div>
+        <div class="slot" onclick="selectSlot(5)"></div>
+        <div class="slot" onclick="selectSlot(6)"></div>
+        <div class="menu-btn">...</div>
+    </div>
 
-        // Logic Joystick mượt
-        joy.addEventListener('touchmove', e => {
-            e.preventDefault();
-            let t = e.touches[0], r = joy.getBoundingClientRect();
-            let dx = t.clientX - (r.left + 50), dy = t.clientY - (r.top + 50);
-            let d = Math.min(Math.sqrt(dx*dx + dy*dy), 50);
-            let ang = Math.atan2(dy, dx);
-            p.vx = Math.cos(ang) * (d/50) * 4;
-            p.vy = Math.sin(ang) * (d/50) * 4;
-            st.style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
-        });
+    <div id="action-btn" onclick="handleAction()">HÀNH<br>ĐỘNG</div>
+</div>
 
-        joy.addEventListener('touchend', () => { p.vx = 0; p.vy = 0; st.style.transform = ''; });
+<canvas id="gameCanvas"></canvas>
 
-        function draw() {
-            ctx.fillStyle = '#2d5a27'; ctx.fillRect(0,0,canvas.width,canvas.height);
-            // Vẽ Lửa trại (Campfire)
-            ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 25, 0, 7); ctx.fill();
-            // Vẽ Nhân vật (Vàng như ảnh 2)
-            p.x += p.vx; p.y += p.vy;
-            ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, 7); ctx.fill();
-            requestAnimationFrame(draw);
-        }
-        draw();
-    </script>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // --- Biến Logic & Data (Tổng hợp từ mày) ---
+    let gameState = { day: 0, time: 0, isNight: false, rescueChance: 0.0 };
+    let player = { x: canvas.width/2, y: canvas.height/2, hp: 100, food: 100, inventory: [], speed: 3 };
+    let campfire = { x: canvas.width/2, y: canvas.height/2, hp: 100, level: 1 };
+    let moveDir = { x: 0, y: 0 };
+    let activeSlotIndex = 0;
+
+    // --- Xử lý Joystick (Góc trái) ---
+    const jOuter = document.getElementById('joystick-outer');
+    const jKnob = document.getElementById('joystick-knob');
+    let jActive = false;
+
+    jOuter.addEventListener('touchstart', e => { jActive = true; e.preventDefault(); handleTouch(e); });
+    window.addEventListener('touchmove', e => { if (jActive) { e.preventDefault(); handleTouch(e); } }, {passive: false});
+    window.addEventListener('touchend', () => { jActive = false; jKnob.style.transform = ''; moveDir = { x: 0, y: 0 }; });
+
+    function handleTouch(e) {
+        const touch = e.touches[0];
+        const rect = jOuter.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let dx = touch.clientX - cx, dy = touch.clientY - cy;
+        const d = Math.min(Math.sqrt(dx*dx + dy*dy), rect.width / 2);
+        const ang = Math.atan2(dy, dx);
+        jKnob.style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
+        moveDir.x = Math.cos(ang); moveDir.y = Math.sin(ang);
+    }
+
+    // --- Vòng lặp Game (Draw & Update) ---
+    function update() {
+        // Di chuyển nhân vật
+        player.x += moveDir.x * player.speed;
+        player.y += moveDir.y * player.speed;
+        player.x = Math.max(20, Math.min(canvas.width - 20, player.x));
+        player.y = Math.max(20, Math.min(canvas.height - 20, player.y));
+    }
+
+    function draw() {
+        ctx.fillStyle = "#2d5a27"; // Nền đảo mướt rượt
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ Lửa trại và Quầng sáng (Giống ảnh 3)
+        // 1. Quầng sáng (Vùng an toàn)
+        ctx.fillStyle = "rgba(100, 200, 100, 0.4)"; // Màu xanh mờ
+        ctx.beginPath(); ctx.arc(campfire.x, campfire.y, 100, 0, 7); ctx.fill();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.6)"; // Viền đen mờ
+        ctx.stroke();
+
+        // 2. Ngọn lửa và củi
+        ctx.fillStyle = "#e67e22"; // Củi
+        ctx.fillRect(campfire.x - 15, campfire.y + 10, 30, 8);
+        ctx.fillRect(campfire.x - 10, campfire.y + 15, 20, 8);
+        ctx.fillStyle = "#f1c40f"; // Lửa vàng
+        ctx.beginPath(); ctx.arc(campfire.x, campfire.y, 15, 0, 7); ctx.fill();
+
+        // Vẽ Nhân vật (Vàng như ảnh 3)
+        ctx.fillStyle = "#f1c40f"; // Thân vàng
+        ctx.beginPath(); ctx.arc(player.x, player.y, 20, 0, 7); ctx.fill();
+        ctx.fillStyle = "black"; // Mắt
+        ctx.beginPath(); ctx.arc(player.x - 7, player.y - 5, 4, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(player.x + 7, player.y - 5, 4, 0, 7); ctx.fill();
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    // --- Xử lý UI Túi đồ ---
+    function selectSlot(idx) {
+        activeSlotIndex = idx;
+        const slots = document.querySelectorAll('.slot');
+        slots.forEach((s, i) => s.classList.toggle('active', i === idx));
+        console.log("Đã chọn ô túi đồ số:", idx + 1);
+    }
+
+    function handleAction() {
+        console.log("Hành động tại vị trí:", player.x, player.y);
+    }
+
+    draw(); // Bắt đầu game
+</script>
 </body>
 </html>
